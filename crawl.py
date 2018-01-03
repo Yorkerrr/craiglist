@@ -72,19 +72,22 @@ def crawl():
         try:
             title = apt.find('a', attrs={'class': 'hdrlnk'}).text
             if not res.get(title):
-                res[title] = {}
-                res[title]['time'] = apt.find('time')['datetime']
-                res[title]['price'] = float(apt.find('span', {'class': 'result-price'}).text.strip('$'))
-                res[title]['url'] = apt.find('a', attrs={'class': 'hdrlnk'}).attrs['href']
-                res[title]['hood'] = apt.find('span', attrs={'class': 'result-hood'}).text
+                parsed_res = {
+                    'time': apt.find('time')['datetime'],
+                    'price': float(apt.find('span', {'class': 'result-price'}).text.strip('$')),
+                    'url': apt.find('a', attrs={'class': 'hdrlnk'}).attrs['href'],
+                    'hood': apt.find('span', attrs={'class': 'result-hood'}).text
+
+                }
                 housing = apt.find('span', attrs={'class': 'housing'})
                 if housing:
                     n_bdrs, size = parse_size(housing.text)
-                    res[title]['n_bdrs'] = n_bdrs
-                    res[title]['size'] = size
+                    parsed_res['n_bdrs'] = n_bdrs
+                    parsed_res['size'] = size
                 else:
-                    res[title]['n_bdrs'] = 0
-                    res[title]['size'] = 0
+                    parsed_res['n_bdrs'] = 0
+                    parsed_res['size'] = 0
+                res[title] = parsed_res
         except Exception as ex:
             print(ex)
     return res
@@ -94,10 +97,14 @@ if __name__ == '__main__':
 
     while True:
         res = crawl()
-        with open('result.txt', mode='r') as f:
-            saved_result = f.readlines()[0]
-            saved_result = json.loads(saved_result)
-            f.close()
+        if os.path.isfile('result.txt'):
+            with open('result.txt', mode='r') as f:
+                saved_result = f.readlines()[0]
+                saved_result = json.loads(saved_result)
+                f.close()
+        else:
+            print("No previous results was found. Creating new set of listings.")
+            saved_result = {}
         diff = set(res.keys()).difference(set(saved_result.keys()))
         if diff:
             print("Found {} new listings:".format(len(diff)))
