@@ -1,6 +1,7 @@
 import json
 import os
 import time
+import datetime
 
 import requests
 from bs4 import BeautifulSoup as bs4
@@ -8,6 +9,7 @@ from bs4 import BeautifulSoup as bs4
 CHAT_ID = os.environ['CHAT_ID']
 TOKEN = os.environ['TOKEN']
 BOT_URL = os.environ['BOT_URL']
+TIMEOUT = int(os.environ.get('CRAIG_TIMEOUT', 600))
 
 
 def _send_request(method_name, payload):
@@ -64,7 +66,7 @@ def crawl():
     url_base = 'https://sfbay.craigslist.org/d/apts-housing-for-rent/search/apa'
     params = dict(max_price=2600, hasPic=1, bundleDuplicates=1, search_distance=2, postal=94118)
     rsp = requests.get(url_base, params=params)
-    print("{}: Requesting {}".format(time.time(), rsp.url))
+    print("{}: Requesting {}".format(datetime.datetime.now(), rsp.url))
     html = bs4(rsp.text, 'html.parser')
     apts = html.find_all('li', attrs={'class': 'result-row'})
     print("Got {} results".format(len(apts)))
@@ -114,8 +116,9 @@ if __name__ == '__main__':
             msg = '{} {} {}'.format(res[diff_item]['url'], res[diff_item]['hood'], res[diff_item]['price'])
             print(msg)
             _send_message(CHAT_ID, msg)
-        os.remove('result.txt')
+        open('result.txt', 'w').close()
         with open('result.txt', mode='w') as f:
             json.dump(res, f)
             f.close()
-        time.sleep(600)
+        print("Going to sleep: {} seconds.".format(TIMEOUT))
+        time.sleep(TIMEOUT)
