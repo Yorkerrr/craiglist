@@ -2,7 +2,6 @@ import json
 import os
 import time
 import datetime
-
 import requests
 from bs4 import BeautifulSoup as bs4
 
@@ -10,6 +9,11 @@ CHAT_ID = os.environ['CHAT_ID']
 TOKEN = os.environ['TOKEN']
 BOT_URL = os.environ['BOT_URL']
 TIMEOUT = int(os.environ.get('CRAIG_TIMEOUT', 600))
+MAX_PRICE = int(os.environ.get('MAX_PRICE') or 3000)
+MAX_DISTANCE = int(os.environ.get('MAX_DISTANCE') or 2)
+ZIP = int(os.environ.get('ZIP') or 94121)
+SKIP_WO_IMAGES = True
+URL = f'https://sfbay.craigslist.org/d/apts-housing-for-rent/search/apa'
 
 
 def _send_request(method_name, payload):
@@ -31,6 +35,14 @@ def _send_message(chat_id, text):
         "text": text,
     }
     return _send_request("sendMessage", payload)
+
+
+def _send_media_group(chat_id, images):
+    payload = {
+        "chat_id": chat_id,
+        "media": [{"type": "photo", "media": url} for url in images],
+    }
+    return _send_request("sendMediaGroup", payload)
 
 
 def parse_size(size):
@@ -63,47 +75,59 @@ def parse_size(size):
 
 def crawl():
     res = {}
-    url_base = 'https://sfbay.craigslist.org/d/apts-housing-for-rent/search/apa'
-    params = dict(max_price=2600, hasPic=1, bundleDuplicates=1, search_distance=2, postal=94118)
-    rsp = requests.get(url_base, params=params)
-    print("{}: Requesting {}".format(datetime.datetime.now(), rsp.url))
-    html = bs4(rsp.text, 'html.parser')
-    apts = html.find_all('li', attrs={'class': 'result-row'})
-    print("Got {} results".format(len(apts)))
-    for apt in apts:
-        try:
-            title = apt.find('a', attrs={'class': 'hdrlnk'}).text
-            if not res.get(title):
-                parsed_res = {
-                    'time': apt.find('time')['datetime'],
-                    'price': float(apt.find('span', {'class': 'result-price'}).text.strip('$')),
-                    'url': apt.find('a', attrs={'class': 'hdrlnk'}).attrs['href'],
-                    'hood': apt.find('span', attrs={'class': 'result-hood'}).text
-
-                }
-                housing = apt.find('span', attrs={'class': 'housing'})
-                if housing:
-                    n_bdrs, size = parse_size(housing.text)
-                    parsed_res['n_bdrs'] = n_bdrs
-                    parsed_res['size'] = size
-                else:
-                    parsed_res['n_bdrs'] = 0
-                    parsed_res['size'] = 0
-                res[title] = parsed_res
-        except Exception as ex:
-            print(ex)
+    offset = 0
+    while True:
+        params = dict(max_price=MAX_PRICE, hasPic=1, bundleDuplicates=1, search_distance=MAX_DISTANCE, postal=ZIP,
+                      s=offset)
+        rsp = requests.get(URL, params=params)
+        print("{}: Requesting {}".format(datetime.datetime.now(), rsp.url))
+        html = bs4(rsp.text, 'lxml')
+        apts = html.find_all('li', attrs={'class': 'result-row'})
+        num_apts = len(apts)
+        print("Got {} results".format(num_apts))
+        if not apts:
+            print("All results processed".format(num_apts))
+            break
+        else:
+            print(f"Processing results with OFFSET {offset}")
+            offset += num_apts
+        for apt in apts:
+            try:
+                title = apt.find('a', attrs={'class': 'hdrlnk'}).text
+                url = apt.find('a', attrs={'class': 'hdrlnk'}).attrs['href']
+                img_ids = apt.find('a').attrs['data-ids'].split(',')
+                imgs = ["https://images.craigslist.org/" + img.split(":")[1] + "_300x300.jpg" for img in img_ids]
+                if SKIP_WO_IMAGES and not imgs:
+                    continue
+                if not res.get(title):
+                    parsed_res = {
+                        'time': apt.find('time')['datetime'],
+                        'price': float(apt.find('span', {'class': 'result-price'}).text.strip('$')),
+                        'url': url,
+                        'hood': apt.find('span', attrs={'class': 'result-hood'}).text,
+                        'pics': imgs
+                    }
+                    housing = apt.find('span', attrs={'class': 'housing'})
+                    if housing:
+                        n_bdrs, size = parse_size(housing.text)
+                        parsed_res['n_bdrs'] = n_bdrs
+                        parsed_res['size'] = size
+                    else:
+                        parsed_res['n_bdrs'] = 0
+                        parsed_res['size'] = 0
+                    res[title] = parsed_res
+            except Exception as ex:
+                print(ex)
     return res
 
 
 if __name__ == '__main__':
-
     while True:
         res = crawl()
         if os.path.isfile('result.txt'):
             with open('result.txt', mode='r') as f:
                 saved_result = f.readlines()[0]
                 saved_result = json.loads(saved_result)
-                f.close()
         else:
             print("No previous results was found. Creating new set of listings.")
             saved_result = {}
@@ -112,11 +136,28 @@ if __name__ == '__main__':
             print("Found {} new listings:".format(len(diff)))
         else:
             print("No new listings were found.")
-        for diff_item in diff:
-            msg = '{} {} {}'.format(res[diff_item]['url'], res[diff_item]['hood'], res[diff_item]['price'])
-            print(msg)
-            _send_message(CHAT_ID, msg)
-        open('result.txt', 'w').close()
+        if len(diff) > 100:
+            print("Looks like this is new run, skipping send to to spam chat")
+        else:
+            for diff_item in diff:
+                msg = '{} {} {}'.format(res[diff_item]['url'], res[diff_item]['hood'], res[diff_item]['price'])
+                if res[diff_item].get('n_bdrs'):
+                    msg += ' bedrooms: {}'.format(res[diff_item].get('n_bdrs'))
+                if res[diff_item].get('size'):
+                    msg += ' size: {}'.format(res[diff_item].get('size'))
+                print(msg)
+                _send_message(CHAT_ID, msg)
+                if len(diff) < 10:
+                    num_of_pic = len(res[diff_item]['pics'])
+                    if num_of_pic > 1:
+                        if num_of_pic > 10:
+                            _send_media_group(CHAT_ID, res[diff_item]['pics'][:10])
+                        else:
+                            _send_media_group(CHAT_ID, res[diff_item]['pics'])
+                    else:
+                        print("Less than 1 pic. Skipping to send")
+                else:
+                    print("To much results, skipping send pic not to spam")
         with open('result.txt', mode='w') as f:
             json.dump(res, f)
             f.close()
