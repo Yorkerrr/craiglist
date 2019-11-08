@@ -13,6 +13,7 @@ MAX_PRICE = int(os.environ.get('MAX_PRICE') or 3000)
 MAX_DISTANCE = int(os.environ.get('MAX_DISTANCE') or 2)
 ZIP = int(os.environ.get('ZIP') or 94121)
 SKIP_WO_IMAGES = True
+RES_FILE_LOC = "res/result.txt"
 URL = f'https://sfbay.craigslist.org/d/apts-housing-for-rent/search/apa'
 
 
@@ -126,8 +127,8 @@ if __name__ == '__main__':
         os.mkdir('res/')
     while True:
         res = crawl()
-        if os.path.isfile('res/result.txt'):
-            with open('result.txt', mode='r') as f:
+        if os.path.isfile(RES_FILE_LOC):
+            with open(RES_FILE_LOC, mode='r') as f:
                 saved_result = f.readlines()[0]
                 saved_result = json.loads(saved_result)
         else:
@@ -160,7 +161,7 @@ if __name__ == '__main__':
                         print("Less than 1 pic. Skipping to send")
                 else:
                     print("To much results, skipping send pic not to spam")
-        with open('result.txt', mode='w') as f:
+        with open(RES_FILE_LOC, mode='w') as f:
             json.dump(res, f)
             f.close()
         print("Going to sleep: {} seconds.".format(TIMEOUT))
