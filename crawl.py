@@ -122,9 +122,11 @@ def crawl():
 
 
 if __name__ == '__main__':
+    if not os.path.isdir('res/'):
+        os.mkdir('res/')
     while True:
         res = crawl()
-        if os.path.isfile('result.txt'):
+        if os.path.isfile('res/result.txt'):
             with open('result.txt', mode='r') as f:
                 saved_result = f.readlines()[0]
                 saved_result = json.loads(saved_result)
