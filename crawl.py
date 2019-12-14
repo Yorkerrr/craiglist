@@ -100,7 +100,7 @@ def crawl():
                 imgs = ["https://images.craigslist.org/" + img.split(":")[1] + "_300x300.jpg" for img in img_ids]
                 if SKIP_WO_IMAGES and not imgs:
                     continue
-                if not res.get(title):
+                if not res.get(url):
                     parsed_res = {
                         'time': apt.find('time')['datetime'],
                         'price': float(apt.find('span', {'class': 'result-price'}).text.strip('$')),
@@ -116,7 +116,7 @@ def crawl():
                     else:
                         parsed_res['n_bdrs'] = 0
                         parsed_res['size'] = 0
-                    res[title] = parsed_res
+                    res[url] = parsed_res
             except Exception as ex:
                 print(ex)
     return res
