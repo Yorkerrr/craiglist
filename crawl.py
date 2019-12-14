@@ -14,7 +14,7 @@ MAX_DISTANCE = int(os.environ.get('MAX_DISTANCE') or 2)
 ZIP = int(os.environ.get('ZIP') or 94121)
 SKIP_WO_IMAGES = True
 RES_FILE_LOC = "res/result.txt"
-URL = f'https://sfbay.craigslist.org/d/apts-housing-for-rent/search/apa'
+URL = os.environ.get('URL') or f'https://sfbay.craigslist.org/d/apts-housing-for-rent/search/apa'
 
 
 def _send_request(method_name, payload):
