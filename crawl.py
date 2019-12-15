@@ -123,8 +123,8 @@ def crawl():
 
 
 if __name__ == '__main__':
-    if not os.path.isdir('res/'):
-        os.mkdir('res/')
+    if not os.path.isdir('res'):
+        os.mkdir('res')
     while True:
         res = crawl()
         if os.path.isfile(RES_FILE_LOC):
@@ -143,30 +143,33 @@ if __name__ == '__main__':
             print("Looks like this is new run, skipping send to to spam chat")
         else:
             for diff_item in diff:
-                msg = '{} {} {}'.format(res[diff_item]['url'], res[diff_item]['hood'], res[diff_item]['price'])
-                if res[diff_item].get('n_bdrs'):
-                    msg += ' bedrooms: {}'.format(res[diff_item].get('n_bdrs'))
-                if res[diff_item].get('size'):
-                    msg += ' size: {}'.format(res[diff_item].get('size'))
-                print(msg)
-                try:
-                    _send_message(CHAT_ID, msg)
-                except requests.exceptions.HTTPError as ex:
-                    print("Was not able to send message to Telegram: %s", str(ex))
-                if len(diff) < 10:
-                    num_of_pic = len(res[diff_item]['pics'])
+                if requests.options(res[diff_item]['url']).status_code == 200:
+                    msg = '{} {} {}'.format(res[diff_item]['url'], res[diff_item]['hood'], res[diff_item]['price'])
+                    if res[diff_item].get('n_bdrs'):
+                        msg += ' bedrooms: {}'.format(res[diff_item].get('n_bdrs'))
+                    if res[diff_item].get('size'):
+                        msg += ' size: {}'.format(res[diff_item].get('size'))
+                    print(msg)
                     try:
-                        if num_of_pic > 1:
-                            if num_of_pic > 10:
-                                _send_media_group(CHAT_ID, res[diff_item]['pics'][:10])
-                            else:
-                                _send_media_group(CHAT_ID, res[diff_item]['pics'])
-                        else:
-                            print("Less than 1 pic. Skipping to send")
+                        _send_message(CHAT_ID, msg)
                     except requests.exceptions.HTTPError as ex:
-                        print("Was not able to send media to Telegram: %s", str(ex))
+                        print("Was not able to send message to Telegram: %s", str(ex))
+                    if len(diff) < 15:
+                        num_of_pic = len(res[diff_item]['pics'])
+                        try:
+                            if num_of_pic > 1:
+                                if num_of_pic > 10:
+                                    _send_media_group(CHAT_ID, res[diff_item]['pics'][:10])
+                                else:
+                                    _send_media_group(CHAT_ID, res[diff_item]['pics'])
+                            else:
+                                print("Less than 1 pic. Skipping to send")
+                        except requests.exceptions.HTTPError as ex:
+                            print("Was not able to send media to Telegram: %s", str(ex))
+                    else:
+                        print("To much results `%s`, skipping send pic not to spam", len(diff))
                 else:
-                    print("To much results, skipping send pic not to spam")
+                    print(diff_item, "returns non 200 response code")
         with open(RES_FILE_LOC, mode='w') as f:
             json.dump(res, f)
             f.close()
