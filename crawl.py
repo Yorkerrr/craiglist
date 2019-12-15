@@ -144,7 +144,7 @@ if __name__ == '__main__':
         else:
             for diff_item in diff:
                 r = requests.options(res[diff_item]['url'])
-                if r.status_code > 399:
+                if r.status_code < 399:
                     msg = '{} {} {}'.format(res[diff_item]['url'], res[diff_item]['hood'], res[diff_item]['price'])
                     if res[diff_item].get('n_bdrs'):
                         msg += ' bedrooms: {}'.format(res[diff_item].get('n_bdrs'))
@@ -170,7 +170,7 @@ if __name__ == '__main__':
                     else:
                         print("To much results `%s`, skipping send pic not to spam", len(diff))
                 else:
-                    print(diff_item, "returns non 200 response code: `%s`", r.status_code)
+                    print(diff_item, "returns non 200 response code: %s: `%s`", res[diff_item]['url'], r.status_code)
         with open(RES_FILE_LOC, mode='w') as f:
             json.dump(res, f)
             f.close()
