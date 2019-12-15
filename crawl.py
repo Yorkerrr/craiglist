@@ -143,7 +143,7 @@ if __name__ == '__main__':
             print("Looks like this is new run, skipping send to to spam chat")
         else:
             for diff_item in diff:
-                r = requests.options(res[diff_item]['url'])
+                r = requests.get(res[diff_item]['url'])
                 if r.status_code < 399:
                     msg = '{} {} {}'.format(res[diff_item]['url'], res[diff_item]['hood'], res[diff_item]['price'])
                     if res[diff_item].get('n_bdrs'):
@@ -154,7 +154,7 @@ if __name__ == '__main__':
                     try:
                         _send_message(CHAT_ID, msg)
                     except requests.exceptions.HTTPError as ex:
-                        print("Was not able to send message to Telegram: %s", str(ex))
+                        print("Was not able to send message to Telegram: %s" % str(ex))
                     if len(diff) < 15:
                         num_of_pic = len(res[diff_item]['pics'])
                         try:
@@ -166,11 +166,11 @@ if __name__ == '__main__':
                             else:
                                 print("Less than 1 pic. Skipping to send")
                         except requests.exceptions.HTTPError as ex:
-                            print("Was not able to send media to Telegram: %s", str(ex))
+                            print("Was not able to send media to Telegram: %s" % str(ex))
                     else:
-                        print("To much results `%s`, skipping send pic not to spam", len(diff))
+                        print("To much results `%s`, skipping send pic not to spam" % len(diff))
                 else:
-                    print(diff_item, "returns non 200 response code: %s: `%s`", res[diff_item]['url'], r.status_code)
+                    print(diff_item, "returns non 200 response code: %s: `%s`" % (res[diff_item]['url'], r.status_code))
         with open(RES_FILE_LOC, mode='w') as f:
             json.dump(res, f)
             f.close()
