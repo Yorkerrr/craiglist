@@ -1,0 +1,15 @@
+name: CI
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Build the Docker image
+      run: docker build -t docker.pkg.github.com/yorkerrr/craiglist/craiglist:latest .
+    - name: Login to github docker registry
+      run: docker login -u yorkerrr -p ${{ secrets.GITHUB_TOKEN }} docker.pkg.github.com
+    - name: Push the Docker image
+      run: docker push docker.pkg.github.com/yorkerrr/craiglist/craiglist:latest
