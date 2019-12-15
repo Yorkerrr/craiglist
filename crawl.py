@@ -149,16 +149,22 @@ if __name__ == '__main__':
                 if res[diff_item].get('size'):
                     msg += ' size: {}'.format(res[diff_item].get('size'))
                 print(msg)
-                _send_message(CHAT_ID, msg)
+                try:
+                    _send_message(CHAT_ID, msg)
+                except requests.exceptions.HTTPError as ex:
+                    print("Was not able to send message to Telegram: %s", str(ex))
                 if len(diff) < 10:
                     num_of_pic = len(res[diff_item]['pics'])
-                    if num_of_pic > 1:
-                        if num_of_pic > 10:
-                            _send_media_group(CHAT_ID, res[diff_item]['pics'][:10])
+                    try:
+                        if num_of_pic > 1:
+                            if num_of_pic > 10:
+                                _send_media_group(CHAT_ID, res[diff_item]['pics'][:10])
+                            else:
+                                _send_media_group(CHAT_ID, res[diff_item]['pics'])
                         else:
-                            _send_media_group(CHAT_ID, res[diff_item]['pics'])
-                    else:
-                        print("Less than 1 pic. Skipping to send")
+                            print("Less than 1 pic. Skipping to send")
+                    except requests.exceptions.HTTPError as ex:
+                        print("Was not able to send media to Telegram: %s", str(ex))
                 else:
                     print("To much results, skipping send pic not to spam")
         with open(RES_FILE_LOC, mode='w') as f:
