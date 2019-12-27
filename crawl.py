@@ -15,6 +15,7 @@ ZIP = os.environ.get('ZIP') or 94121
 SKIP_WO_IMAGES = True
 RES_FILE_LOC = "res/result.txt"
 URL = os.environ.get('URL') or f'https://sfbay.craigslist.org/d/apts-housing-for-rent/search/apa'
+DIRECT_URL = os.environ.get('DIRECT_URL') or None
 
 
 def _send_request(method_name, payload):
@@ -77,10 +78,16 @@ def parse_size(size):
 def crawl():
     res = {}
     offset = 0
-    while True:
+    if DIRECT_URL:
+        target_url = DIRECT_URL
+        params = dict(s=offset)
+    else:
+        target_url = URL
         params = dict(max_price=MAX_PRICE, hasPic=1, bundleDuplicates=1, search_distance=MAX_DISTANCE, postal=ZIP,
                       s=offset)
-        rsp = requests.get(URL, params=params)
+    while True:
+        params["s"] = offset
+        rsp = requests.get(target_url, params=params)
         print("{}: Requesting {}".format(datetime.datetime.now(), rsp.url))
         html = bs4(rsp.text, 'lxml')
         apts = html.find_all('li', attrs={'class': 'result-row'})
