@@ -110,7 +110,7 @@ def crawl():
                 if not res.get(url):
                     parsed_res = {
                         'time': apt.find('time')['datetime'],
-                        'price': float(apt.find('span', {'class': 'result-price'}).text.strip('$')),
+                        'price': float(apt.find('span', {'class': 'result-price'}).text.strip('$').replace(',','')),
                         'url': url,
                         'hood': apt.find('span', attrs={'class': 'result-hood'}).text,
                         'pics': imgs
