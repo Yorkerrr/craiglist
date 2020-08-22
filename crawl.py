@@ -9,6 +9,7 @@ CHAT_ID = os.environ['CHAT_ID']
 TOKEN = os.environ['TOKEN']
 BOT_URL = os.environ['BOT_URL']
 TIMEOUT = int(os.environ.get('CRAIG_TIMEOUT', 600))
+MAX_NUMBER = int(os.environ.get('MAX_NUMBER', 100000))
 MAX_PRICE = int(os.environ.get('MAX_PRICE') or 3000)
 MAX_DISTANCE = int(os.environ.get('MAX_DISTANCE') or 2)
 ZIP = os.environ.get('ZIP') or 94121
@@ -27,6 +28,12 @@ def _send_request(method_name, payload):
     """
     uri = "{bot_url}/{method_name}".format(bot_url=BOT_URL, method_name=method_name)
     r = requests.post(uri, json=payload)
+    if r.status_code == 429:
+        resp = json.loads(r.text)
+        time.sleep(resp['parameters']['retry_after']+1)
+        rr = requests.post(uri, json=payload)
+        rr.raise_for_status()
+        return rr.json()
     r.raise_for_status()
     return r.json()
 
@@ -142,11 +149,12 @@ if __name__ == '__main__':
             print("No previous results was found. Creating new set of listings.")
             saved_result = {}
         diff = set(res.keys()).difference(set(saved_result.keys()))
+        num_diff = len(diff)
         if diff:
-            print("Found {} new listings:".format(len(diff)))
+            print("Found {} new listings:".format(num_diff))
         else:
             print("No new listings were found.")
-        if len(diff) > 100:
+        if num_diff > MAX_NUMBER:
             print("Looks like this is new run, skipping send to to spam chat")
         else:
             for diff_item in diff:
@@ -161,13 +169,15 @@ if __name__ == '__main__':
                     try:
                         _send_message(CHAT_ID, msg)
                     except requests.exceptions.HTTPError as ex:
+                        if ex.response.status_code == 429:
+                            _send_message(CHAT_ID, msg)
                         print("Was not able to send message to Telegram: %s" % str(ex))
-                    if len(diff) < 15:
+                    if len(diff) < MAX_NUMBER:
                         num_of_pic = len(res[diff_item]['pics'])
                         try:
                             if num_of_pic > 1:
                                 if num_of_pic > 10:
-                                    _send_media_group(CHAT_ID, res[diff_item]['pics'][:10])
+                                    _send_media_group(CHAT_ID, res[diff_item]['pics'][:5])
                                 else:
                                     _send_media_group(CHAT_ID, res[diff_item]['pics'])
                             else:
