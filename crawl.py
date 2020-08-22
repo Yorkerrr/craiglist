@@ -176,6 +176,7 @@ if __name__ == '__main__':
                             print("Was not able to send media to Telegram: %s" % str(ex))
                     else:
                         print("To much results `%s`, skipping send pic not to spam" % len(diff))
+                    time.sleep(1)
                 else:
                     print(diff_item, "returns non 200 response code: %s: `%s`" % (res[diff_item]['url'], r.status_code))
         with open(RES_FILE_LOC, mode='w') as f:
